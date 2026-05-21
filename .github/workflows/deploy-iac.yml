@@ -1,0 +1,76 @@
+name: Deploy Bicep IaC
+
+on:
+  workflow_dispatch:
+    inputs:
+      resourceGroupName:
+        description: Resource group to create or update
+        required: true
+        default: hello-actions-iac-rg
+      location:
+        description: Azure region for the deployment
+        required: true
+        default: eastus
+      storageAccountName:
+        description: Globally unique storage account name for the static site
+        required: true
+      keyVaultNamePrimary:
+        description: Globally unique name for the first key vault
+        required: true
+      keyVaultNameSecondary:
+        description: Globally unique name for the second key vault
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy storage account and key vaults
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: Azure/login@v3.0.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create resource group
+        uses: Azure/cli@v3.0.0
+        with:
+          inlineScript: |
+            az group create \
+              --name "${{ inputs.resourceGroupName }}" \
+              --location "${{ inputs.location }}"
+
+      - name: Deploy Bicep template
+        uses: Azure/cli@v3.0.0
+        env:
+          KEY_VAULT_NAME_PRIMARY: ${{ inputs.keyVaultNamePrimary }}
+          KEY_VAULT_NAME_SECONDARY: ${{ inputs.keyVaultNameSecondary }}
+        with:
+          inlineScript: |
+            key_vault_names="$(python - <<'PY'
+            import json
+            import os
+
+            print(json.dumps([
+                os.environ['KEY_VAULT_NAME_PRIMARY'],
+                os.environ['KEY_VAULT_NAME_SECONDARY'],
+            ]))
+            PY
+            )"
+
+            az deployment group create \
+              --resource-group "${{ inputs.resourceGroupName }}" \
+              --template-file infra/main.bicep \
+              --parameters \
+                location="${{ inputs.location }}" \
+                storageAccountName="${{ inputs.storageAccountName }}" \
+                keyVaultNames="$key_vault_names"

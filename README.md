@@ -20,6 +20,21 @@ In this exercise, you will:
 1. See the workflow run
 1. Merge your pull request
 
+## Bicep infrastructure deployment
+
+This repository also includes a manually triggered workflow at `.github/workflows/deploy-iac.yml` that deploys the Bicep template in `infra/main.bicep`.
+
+The template provisions:
+
+- A StorageV2 storage account with static website hosting enabled
+- Two Azure Key Vaults
+
+Before running the workflow, add these repository secrets for Azure OIDC authentication:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+
 ### How to start this exercise
 
 Simply copy the exercise to your account, then give your favorite Octocat (Mona) **about 20 seconds** to prepare the first lesson, then **refresh the page**.
